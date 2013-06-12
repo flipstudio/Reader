@@ -1,9 +1,9 @@
 //
 //  ReaderSettings.m
-//  Pods
+//  Reader v2.6.0
 //
 //  Created by Felipe Lobo on 29/05/13.
-//
+//	Copyright © 2013 Flip Studio. All rights reserved.
 //
 
 #import "ReaderSettings.h"
