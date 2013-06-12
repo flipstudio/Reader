@@ -27,7 +27,7 @@
 
 #import "ReaderDocument.h"
 
-@class ReaderViewController;
+@class ReaderViewController, ReaderSettings;
 
 @protocol ReaderViewControllerDelegate <NSObject>
 
@@ -41,6 +41,10 @@
 
 @property (nonatomic, unsafe_unretained, readwrite) id <ReaderViewControllerDelegate> delegate;
 
+@property (nonatomic, copy) void (^pageChangedBlock)(NSInteger);
+
+- (id)initWithReaderDocument:(ReaderDocument *)object settings:(ReaderSettings *)settings;
 - (id)initWithReaderDocument:(ReaderDocument *)object;
+- (void)showDocumentPage:(NSInteger)pageNumber;
 
 @end

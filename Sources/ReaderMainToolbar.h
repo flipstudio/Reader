@@ -29,6 +29,7 @@
 
 @class ReaderMainToolbar;
 @class ReaderDocument;
+@class ReaderSettings;
 
 @protocol ReaderMainToolbarDelegate <NSObject>
 
@@ -47,6 +48,7 @@
 @property (nonatomic, unsafe_unretained, readwrite) id <ReaderMainToolbarDelegate> delegate;
 
 - (id)initWithFrame:(CGRect)frame document:(ReaderDocument *)object;
+- (id)initWithFrame:(CGRect)frame document:(ReaderDocument *)object settings:(ReaderSettings *)settings;
 
 - (void)setBookmarkState:(BOOL)state;
 
