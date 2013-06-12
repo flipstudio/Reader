@@ -31,11 +31,15 @@
 #import "ReaderContentView.h"
 #import "ReaderThumbCache.h"
 #import "ReaderThumbQueue.h"
+#import "ReaderSettings.h"
 
 #import <MessageUI/MessageUI.h>
 
 @interface ReaderViewController () <UIScrollViewDelegate, UIGestureRecognizerDelegate, MFMailComposeViewControllerDelegate,
 									ReaderMainToolbarDelegate, ReaderMainPagebarDelegate, ReaderContentViewDelegate, ThumbsViewControllerDelegate>
+
+@property (nonatomic, strong) ReaderSettings *settings;
+
 @end
 
 @implementation ReaderViewController
@@ -282,26 +286,33 @@
 
 - (id)initWithReaderDocument:(ReaderDocument *)object
 {
-	id reader = nil; // ReaderViewController object
+	return [self initWithReaderDocument:object settings:[ReaderSettings defaultSettings]];
+}
 
+- (id)initWithReaderDocument:(ReaderDocument *)object settings:(ReaderSettings *)settings
+{
+	id reader = nil; // ReaderViewController object
+	
 	if ((object != nil) && ([object isKindOfClass:[ReaderDocument class]]))
 	{
 		if ((self = [super initWithNibName:nil bundle:nil])) // Designated initializer
 		{
+			_settings = settings;
+			
 			NSNotificationCenter *notificationCenter = [NSNotificationCenter defaultCenter];
-
+			
 			[notificationCenter addObserver:self selector:@selector(applicationWill:) name:UIApplicationWillTerminateNotification object:nil];
-
+			
 			[notificationCenter addObserver:self selector:@selector(applicationWill:) name:UIApplicationWillResignActiveNotification object:nil];
-
+			
 			[object updateProperties]; document = object; // Retain the supplied ReaderDocument object for our use
-
+			
 			[ReaderThumbCache touchThumbCacheWithGUID:object.guid]; // Touch the document thumb cache directory
-
+			
 			reader = self; // Return an initialized ReaderViewController object
 		}
 	}
-
+	
 	return reader;
 }
 
@@ -331,25 +342,31 @@
 
 	[self.view addSubview:theScrollView];
 
-	CGRect toolbarRect = viewRect;
-	toolbarRect.size.height = TOOLBAR_HEIGHT;
+	if ([_settings shouldShowMainToolbar])
+	{
+		CGRect toolbarRect = viewRect;
+		toolbarRect.size.height = TOOLBAR_HEIGHT;
 
-	mainToolbar = [[ReaderMainToolbar alloc] initWithFrame:toolbarRect document:document]; // At top
+		mainToolbar = [[ReaderMainToolbar alloc] initWithFrame:toolbarRect document:document settings:_settings]; // At top
 
-	mainToolbar.delegate = self;
+		mainToolbar.delegate = self;
 
-	[self.view addSubview:mainToolbar];
+		[self.view addSubview:mainToolbar];
+	}
 
-	CGRect pagebarRect = viewRect;
-	pagebarRect.size.height = PAGEBAR_HEIGHT;
-	pagebarRect.origin.y = (viewRect.size.height - PAGEBAR_HEIGHT);
+	if ([_settings shouldShowMainPagebar])
+	{
+		CGRect pagebarRect = viewRect;
+		pagebarRect.size.height = PAGEBAR_HEIGHT;
+		pagebarRect.origin.y = (viewRect.size.height - PAGEBAR_HEIGHT);
 
-	mainPagebar = [[ReaderMainPagebar alloc] initWithFrame:pagebarRect document:document]; // At bottom
+		mainPagebar = [[ReaderMainPagebar alloc] initWithFrame:pagebarRect document:document]; // At bottom
 
-	mainPagebar.delegate = self;
+		mainPagebar.delegate = self;
 
-	[self.view addSubview:mainPagebar];
-
+		[self.view addSubview:mainPagebar];
+	}
+	
 	UITapGestureRecognizer *singleTapOne = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleSingleTap:)];
 	singleTapOne.numberOfTouchesRequired = 1; singleTapOne.numberOfTapsRequired = 1; singleTapOne.delegate = self;
 	[self.view addGestureRecognizer:singleTapOne];
@@ -391,11 +408,7 @@
 		[self performSelector:@selector(showDocument:) withObject:nil afterDelay:0.02];
 	}
 
-#if (READER_DISABLE_IDLE == TRUE) // Option
-
-	[UIApplication sharedApplication].idleTimerDisabled = YES;
-
-#endif // end of READER_DISABLE_IDLE Option
+	[UIApplication sharedApplication].idleTimerDisabled = [_settings isIdleTimeDisabled];
 }
 
 - (void)viewWillDisappear:(BOOL)animated
@@ -404,11 +417,7 @@
 
 	lastAppearSize = self.view.bounds.size; // Track view size
 
-#if (READER_DISABLE_IDLE == TRUE) // Option
-
-	[UIApplication sharedApplication].idleTimerDisabled = NO;
-
-#endif // end of READER_DISABLE_IDLE Option
+	[UIApplication sharedApplication].idleTimerDisabled = [_settings isIdleTimeDisabled];
 }
 
 - (void)viewDidDisappear:(BOOL)animated
@@ -729,26 +738,25 @@
 
 - (void)tappedInToolbar:(ReaderMainToolbar *)toolbar doneButton:(UIButton *)button
 {
-#if (READER_STANDALONE == FALSE) // Option
-
-	[document saveReaderDocument]; // Save any ReaderDocument object changes
-
-	[[ReaderThumbQueue sharedInstance] cancelOperationsWithGUID:document.guid];
-
-	[[ReaderThumbCache sharedInstance] removeAllObjects]; // Empty the thumb cache
-
-	if (printInteraction != nil) [printInteraction dismissAnimated:NO]; // Dismiss
-
-	if ([delegate respondsToSelector:@selector(dismissReaderViewController:)] == YES)
+	if ([_settings standalone])
 	{
-		[delegate dismissReaderViewController:self]; // Dismiss the ReaderViewController
-	}
-	else // We have a "Delegate must respond to -dismissReaderViewController: error"
-	{
-		NSAssert(NO, @"Delegate must respond to -dismissReaderViewController:");
-	}
+		[document saveReaderDocument]; // Save any ReaderDocument object changes
 
-#endif // end of READER_STANDALONE Option
+		[[ReaderThumbQueue sharedInstance] cancelOperationsWithGUID:document.guid];
+
+		[[ReaderThumbCache sharedInstance] removeAllObjects]; // Empty the thumb cache
+
+		if (printInteraction != nil) [printInteraction dismissAnimated:NO]; // Dismiss
+
+		if ([delegate respondsToSelector:@selector(dismissReaderViewController:)] == YES)
+		{
+			[delegate dismissReaderViewController:self]; // Dismiss the ReaderViewController
+		}
+		else // We have a "Delegate must respond to -dismissReaderViewController: error"
+		{
+			NSAssert(NO, @"Delegate must respond to -dismissReaderViewController:");
+		}
+	}
 }
 
 - (void)tappedInToolbar:(ReaderMainToolbar *)toolbar thumbsButton:(UIButton *)button
@@ -762,95 +770,94 @@
 	thumbsViewController.modalTransitionStyle = UIModalTransitionStyleCrossDissolve;
 	thumbsViewController.modalPresentationStyle = UIModalPresentationFullScreen;
 
-	[self presentModalViewController:thumbsViewController animated:NO];
+	[self presentViewController:thumbsViewController animated:NO completion:nil];
 }
 
 - (void)tappedInToolbar:(ReaderMainToolbar *)toolbar printButton:(UIButton *)button
 {
-#if (READER_ENABLE_PRINT == TRUE) // Option
-
-	Class printInteractionController = NSClassFromString(@"UIPrintInteractionController");
-
-	if ((printInteractionController != nil) && [printInteractionController isPrintingAvailable])
+	if ([[self settings] isPrintingEnabled])
 	{
-		NSURL *fileURL = document.fileURL; // Document file URL
+		Class printInteractionController = NSClassFromString(@"UIPrintInteractionController");
 
-		printInteraction = [printInteractionController sharedPrintController];
-
-		if ([printInteractionController canPrintURL:fileURL] == YES) // Check first
+		if ((printInteractionController != nil) && [printInteractionController isPrintingAvailable])
 		{
-			UIPrintInfo *printInfo = [NSClassFromString(@"UIPrintInfo") printInfo];
+			NSURL *fileURL = document.fileURL; // Document file URL
 
-			printInfo.duplex = UIPrintInfoDuplexLongEdge;
-			printInfo.outputType = UIPrintInfoOutputGeneral;
-			printInfo.jobName = document.fileName;
+			printInteraction = [printInteractionController sharedPrintController];
 
-			printInteraction.printInfo = printInfo;
-			printInteraction.printingItem = fileURL;
-			printInteraction.showsPageRange = YES;
-
-			if ([UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad)
+			if ([printInteractionController canPrintURL:fileURL] == YES) // Check first
 			{
-				[printInteraction presentFromRect:button.bounds inView:button animated:YES completionHandler:
-					^(UIPrintInteractionController *pic, BOOL completed, NSError *error)
-					{
-						#ifdef DEBUG
-							if ((completed == NO) && (error != nil)) NSLog(@"%s %@", __FUNCTION__, error);
-						#endif
-					}
-				];
-			}
-			else // Presume UIUserInterfaceIdiomPhone
-			{
-				[printInteraction presentAnimated:YES completionHandler:
-					^(UIPrintInteractionController *pic, BOOL completed, NSError *error)
-					{
-						#ifdef DEBUG
-							if ((completed == NO) && (error != nil)) NSLog(@"%s %@", __FUNCTION__, error);
-						#endif
-					}
-				];
+				UIPrintInfo *printInfo = [NSClassFromString(@"UIPrintInfo") printInfo];
+
+				printInfo.duplex = UIPrintInfoDuplexLongEdge;
+				printInfo.outputType = UIPrintInfoOutputGeneral;
+				printInfo.jobName = document.fileName;
+
+				printInteraction.printInfo = printInfo;
+				printInteraction.printingItem = fileURL;
+				printInteraction.showsPageRange = YES;
+
+				if ([UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad)
+				{
+					[printInteraction presentFromRect:button.bounds inView:button animated:YES completionHandler:
+						^(UIPrintInteractionController *pic, BOOL completed, NSError *error)
+						{
+							#ifdef DEBUG
+								if ((completed == NO) && (error != nil)) NSLog(@"%s %@", __FUNCTION__, error);
+							#endif
+						}
+					];
+				}
+				else // Presume UIUserInterfaceIdiomPhone
+				{
+					[printInteraction presentAnimated:YES completionHandler:
+						^(UIPrintInteractionController *pic, BOOL completed, NSError *error)
+						{
+							#ifdef DEBUG
+								if ((completed == NO) && (error != nil)) NSLog(@"%s %@", __FUNCTION__, error);
+							#endif
+						}
+					];
+				}
 			}
 		}
 	}
-
-#endif // end of READER_ENABLE_PRINT Option
 }
 
 - (void)tappedInToolbar:(ReaderMainToolbar *)toolbar emailButton:(UIButton *)button
 {
-#if (READER_ENABLE_MAIL == TRUE) // Option
 
-	if ([MFMailComposeViewController canSendMail] == NO) return;
-
-	if (printInteraction != nil) [printInteraction dismissAnimated:YES];
-
-	unsigned long long fileSize = [document.fileSize unsignedLongLongValue];
-
-	if (fileSize < (unsigned long long)15728640) // Check attachment size limit (15MB)
+	if ([[self settings] isMailEnabled])
 	{
-		NSURL *fileURL = document.fileURL; NSString *fileName = document.fileName; // Document
+		if ([MFMailComposeViewController canSendMail] == NO) return;
 
-		NSData *attachment = [NSData dataWithContentsOfURL:fileURL options:(NSDataReadingMapped|NSDataReadingUncached) error:nil];
+		if (printInteraction != nil) [printInteraction dismissAnimated:YES];
 
-		if (attachment != nil) // Ensure that we have valid document file attachment data
+		unsigned long long fileSize = [document.fileSize unsignedLongLongValue];
+
+		if (fileSize < (unsigned long long)15728640) // Check attachment size limit (15MB)
 		{
-			MFMailComposeViewController *mailComposer = [MFMailComposeViewController new];
+			NSURL *fileURL = document.fileURL; NSString *fileName = document.fileName; // Document
 
-			[mailComposer addAttachmentData:attachment mimeType:@"application/pdf" fileName:fileName];
+			NSData *attachment = [NSData dataWithContentsOfURL:fileURL options:(NSDataReadingMapped|NSDataReadingUncached) error:nil];
 
-			[mailComposer setSubject:fileName]; // Use the document file name for the subject
+			if (attachment != nil) // Ensure that we have valid document file attachment data
+			{
+				MFMailComposeViewController *mailComposer = [MFMailComposeViewController new];
 
-			mailComposer.modalTransitionStyle = UIModalTransitionStyleCoverVertical;
-			mailComposer.modalPresentationStyle = UIModalPresentationFormSheet;
+				[mailComposer addAttachmentData:attachment mimeType:@"application/pdf" fileName:fileName];
 
-			mailComposer.mailComposeDelegate = self; // Set the delegate
+				[mailComposer setSubject:fileName]; // Use the document file name for the subject
 
-			[self presentModalViewController:mailComposer animated:YES];
+				mailComposer.modalTransitionStyle = UIModalTransitionStyleCoverVertical;
+				mailComposer.modalPresentationStyle = UIModalPresentationFormSheet;
+
+				mailComposer.mailComposeDelegate = self; // Set the delegate
+
+				[self presentViewController:mailComposer animated:YES completion:nil];
+			}
 		}
 	}
-
-#endif // end of READER_ENABLE_MAIL Option
 }
 
 - (void)tappedInToolbar:(ReaderMainToolbar *)toolbar markButton:(UIButton *)button
@@ -877,7 +884,7 @@
 		if ((result == MFMailComposeResultFailed) && (error != NULL)) NSLog(@"%@", error);
 	#endif
 
-	[self dismissModalViewControllerAnimated:YES]; // Dismiss
+	[self dismissViewControllerAnimated:YES completion:nil]; // Dismiss
 }
 
 #pragma mark ThumbsViewControllerDelegate methods
@@ -886,7 +893,7 @@
 {
 	[self updateToolbarBookmarkIcon]; // Update bookmark icon
 
-	[self dismissModalViewControllerAnimated:NO]; // Dismiss
+	[self dismissViewControllerAnimated:NO completion:nil]; // Dismiss
 }
 
 - (void)thumbsViewController:(ThumbsViewController *)viewController gotoPage:(NSInteger)page
