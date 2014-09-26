@@ -62,10 +62,6 @@
 
 static void *ReaderContentViewContext = &ReaderContentViewContext;
 
-#pragma mark - Properties
-
-@synthesize message;
-
 #pragma mark - ReaderContentView functions
 
 static inline CGFloat zoomScaleThatFits(CGSize target, CGSize source, CGFloat bfwi)
@@ -343,7 +339,7 @@ static inline CGFloat zoomScaleThatFits(CGSize target, CGSize source, CGFloat bf
 {
 	[super touchesBegan:touches withEvent:event]; // Message superclass
 
-	[message contentView:self touchesBegan:touches]; // Message delegate
+	[_message contentView:self touchesBegan:touches]; // Message delegate
 }
 
 - (void)touchesCancelled:(NSSet *)touches withEvent:(UIEvent *)event
