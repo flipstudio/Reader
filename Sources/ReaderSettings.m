@@ -14,9 +14,9 @@
 {
 	ReaderSettings *settings = [[ReaderSettings alloc] init];
 	
+	settings.flatUI = YES;
 	settings.bookmarking = YES;
 	settings.mailEnabled = YES;
-	settings.printingEnabled = YES;
 	settings.thumbsEnabled = YES;
 	settings.previewEnabled = YES;
 	settings.retinaDisabled = NO;

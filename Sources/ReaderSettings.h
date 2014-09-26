@@ -11,10 +11,10 @@
 @interface ReaderSettings : NSObject
 
 @property (nonatomic, assign) BOOL standalone;
+@property (nonatomic, assign, getter = hasFlatUI) BOOL flatUI;
 @property (nonatomic, assign, getter = hasBookmarking) BOOL bookmarking;
 @property (nonatomic, assign, getter = isMailEnabled) BOOL mailEnabled;
-@property (nonatomic, assign, getter = isThumbsEnabled) BOOL thumbsEnabled;
-@property (nonatomic, assign, getter = isPrintingEnabled) BOOL printingEnabled;
+@property (nonatomic, assign, getter = areThumbsEnabled) BOOL thumbsEnabled;
 @property (nonatomic, assign, getter = isIdleTimeDisabled) BOOL idleTimeDisabled;
 @property (nonatomic, assign, getter = isPreviewEnabled) BOOL previewEnabled;
 @property (nonatomic, assign, getter = shouldShowShadows) BOOL showShadows;
