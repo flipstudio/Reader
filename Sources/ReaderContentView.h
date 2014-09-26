@@ -41,7 +41,7 @@
 
 @interface ReaderContentView : UIScrollView
 
-@property (nonatomic, weak, readwrite) id <ReaderContentViewDelegate> message;
+@property (nonatomic, unsafe_unretained, readwrite) id <ReaderContentViewDelegate> message;
 
 - (instancetype)initWithFrame:(CGRect)frame fileURL:(NSURL *)fileURL page:(NSUInteger)page password:(NSString *)phrase;
 
