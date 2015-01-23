@@ -277,21 +277,6 @@
 	return _fileURL;
 }
 
-- (BOOL)canEmail
-{
-	return YES;
-}
-
-- (BOOL)canExport
-{
-	return YES;
-}
-
-- (BOOL)canPrint
-{
-	return YES;
-}
-
 - (BOOL)archiveDocumentProperties
 {
 	NSString *archiveFilePath = [ReaderDocument archiveFilePath:[self fileName]];
