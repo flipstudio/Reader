@@ -71,7 +71,6 @@
 @synthesize lastOpen = _lastOpen;
 @synthesize password = _password;
 @dynamic fileName, fileURL;
-@dynamic canEmail, canExport, canPrint;
 
 #pragma mark - ReaderDocument class methods
 

@@ -38,9 +38,9 @@
 @property (nonatomic, strong, readonly) NSString *password;
 @property (nonatomic, strong, readonly) NSURL *fileURL;
 
-@property (nonatomic, readonly) BOOL canEmail;
-@property (nonatomic, readonly) BOOL canExport;
-@property (nonatomic, readonly) BOOL canPrint;
+@property (nonatomic, assign) BOOL canEmail;
+@property (nonatomic, assign) BOOL canExport;
+@property (nonatomic, assign) BOOL canPrint;
 
 + (NSString *)documentsPath;
 
